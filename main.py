@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import random
+
 import requests
 from dotenv import load_dotenv
 
@@ -95,8 +97,8 @@ def load_quotes():
 def choose_quote(entries, today):
     # Date-based rotation, no persistent state required.
     # Each category cycles through its own list.
-    index = today.toordinal() % len(entries)
-    return entries[index]
+    quote = random.choice(entries)
+    return quote
 
 
 def update_paragraph(block_id, new_text, headers, dry_run=False):
