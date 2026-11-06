@@ -1,0 +1,65 @@
+
+name: Daily Notion Quotes
+
+on:
+  schedule:
+    # 07:00 UK winter time or summer time
+    - cron: "0 6,7 * * *"
+
+  # Also allows manual runs from GitHub
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notion-daily-quotes
+  cancel-in-progress: false
+
+jobs:
+  update-quotes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check UK time
+        id: time
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          now = datetime.now(ZoneInfo("Europe/London"))
+          manual = os.environ["EVENT_NAME"] == "workflow_dispatch"
+
+          should_run = manual or now.hour == 7
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"run={'true' if should_run else 'false'}\n")
+
+          print("UK time:", now)
+          print("Run automation:", should_run)
+          PY
+
+      - name: Check out repository
+        if: steps.time.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.time.outputs.run == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        if: steps.time.outputs.run == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Update Notion dashboard
+        if: steps.time.outputs.run == 'true'
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_PAGE_ID: ${{ secrets.NOTION_PAGE_ID }}
+        run: python main.py
